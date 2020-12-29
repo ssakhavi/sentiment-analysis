@@ -16,3 +16,7 @@ small_corpus:
 big_corpus:
   type: pandas.CSVDataSet
   filepath: data/02_intermediate/big_corpus.csv
+
+small_corpus_with_sentiment:
+  type: pandas.CSVDataSet
+  filepath: data/02_intermediate/small_corpus_with_sentiment.csv
