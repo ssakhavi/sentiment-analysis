@@ -108,12 +108,12 @@ def calculate_sentiment_score(series: pd.Series):
     review = series["reviews"]
     if pd.notna(review):
         sentences = tokenize.sent_tokenize(review)
-        word_list = preprocess_sentences(sentences)
+        tokenized_sentence_list = preprocess_sentences(sentences)
 
         # print("\nPrinting Positive/Negative Words(if any)")
         sentence_score = {}
         overall_score = 0
-        for key, words in word_list.items():
+        for key, words in tokenized_sentence_list.items():
             score = 0
             for word in words:
                 score_sign = 1
@@ -128,6 +128,6 @@ def calculate_sentiment_score(series: pd.Series):
             sentence_score[key] = score
             overall_score += math.copysign(1, score) if abs(score) > 0 else 0
 
-        return overall_score
+        return overall_score / len(sentence_score)
     else:
         return 0
