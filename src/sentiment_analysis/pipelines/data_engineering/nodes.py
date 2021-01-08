@@ -1,14 +1,23 @@
+from typing import List
+from nltk.corpus.reader import wordlist
 import pandas as pd
 from imblearn.under_sampling import RandomUnderSampler
 from tqdm import tqdm
 from nltk.corpus import opinion_lexicon
 from nltk import tokenize
+from nltk.sentiment.util import mark_negation
 import string
 import math
 from pandarallel import pandarallel
+from nltk.corpus import stopwords
+import regex as re
+
 
 tqdm.pandas()
 pandarallel.initialize()
+
+stopword_list = stopwords.words("english")
+stopword_list.remove("not")
 
 
 def extract_small_big_corpus(corpus_df: pd.DataFrame) -> pd.DataFrame:
@@ -54,26 +63,70 @@ def extract_sentiment_score_by_counting(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def remove_extra_whitespace_tabs(text):
+    # pattern = r'^\s+$|\s+$'
+    pattern = r"^\s*|\s\s*"
+    return re.sub(pattern, " ", text).strip()
+
+
+def preprocess_sentences(sents):
+    word_list = {}
+
+    if not isinstance(sents, list):
+        sents = [sents]
+
+    for i, sent in enumerate(sents):
+        # Pre-Tokenization
+
+        ## Remove Punctuations
+        sent = sent.translate(str.maketrans("", "", string.punctuation))
+
+        ## lower-case
+        sent = sent.lower()
+
+        ## Remove Extra White Spaces and Tabs
+        sent = remove_extra_whitespace_tabs(sent)
+
+        # Tokenization
+        word_tokens = tokenize.word_tokenize(sent)
+
+        # Post-Tokenization
+
+        ## Remove stopwords
+        word_tokens = [w for w in word_tokens if not w in stopword_list]
+
+        ## Mark Negation
+        word_tokens = mark_negation(word_tokens)
+
+        word_list[i] = word_tokens
+        ## Mark Negation
+
+    return word_list
+
+
 def calculate_sentiment_score(series: pd.Series):
     review = series["reviews"]
     if pd.notna(review):
         sentences = tokenize.sent_tokenize(review)
-        word_list = {}
+        word_list = preprocess_sentences(sentences)
 
-        for i, sent in enumerate(sentences):
-            word_list[i] = tokenize.word_tokenize(sent)
-
+        # print("\nPrinting Positive/Negative Words(if any)")
         sentence_score = {}
         overall_score = 0
         for key, words in word_list.items():
             score = 0
             for word in words:
-                if word.lower() in opinion_lexicon.positive():
-                    score += 1
-                if word.lower() in opinion_lexicon.negative():
-                    score -= 1
+                score_sign = 1
+                if len(word.split("_")) > 1:
+                    score_sign = -1 if word.split("_")[1] == "NEG" else 1
+                if word.split("_")[0] in opinion_lexicon.positive():
+                    # print(f"{word}: Pos")
+                    score += 1 * score_sign
+                if word.split("_")[0] in opinion_lexicon.negative():
+                    # print(f"{word}: Neg")
+                    score -= 1 * score_sign
             sentence_score[key] = score
-            overall_score += math.copysign(1, score)
+            overall_score += math.copysign(1, score) if abs(score) > 0 else 0
 
         return overall_score
     else:
