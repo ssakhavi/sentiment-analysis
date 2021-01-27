@@ -7,7 +7,7 @@ from sentiment_analysis.pipelines.data_engineering.nodes import (
 
 def create_pipeline(**kwargs):
     return Pipeline(
-        [
+        [ # This is my pipeline definition
             node(
                 func=extract_small_big_corpus,
                 inputs="raw_corpus",
